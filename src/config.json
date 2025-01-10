@@ -1,0 +1,18 @@
+{
+  "host": ":25678",
+  "sleep": 60,
+  "ffmpeg": {
+    "exec": "ffmpeg",
+    "type": "cpu",
+    "gpu": ""
+  },
+  "video": [
+    {
+      "wsHost": "vd-file-hnzz2-wcloud.wojiazongguan.cn:50443",
+      "paramMsg": "MT1234567890==",
+      "name": "客厅",
+      "size": 10,
+      "count": 10
+    }
+  ]
+}
