@@ -1,5 +1,6 @@
 {
   "host": ":25678",
+  "path": "./",
   "sleep": 60,
   "ffmpeg": {
     "exec": "ffmpeg",

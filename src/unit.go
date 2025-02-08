@@ -13,6 +13,7 @@ import (
 // 配置文件
 type Config struct {
 	Host   string  `json:"host"`
+	Path   string  `jsson:"path"`
 	Sleep  int     `jsson:"sleep"`
 	FFmpeg FFmpeg  `json:"ffmpeg"`
 	Video  []Video `json:"video"`

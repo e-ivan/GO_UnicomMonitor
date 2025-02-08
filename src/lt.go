@@ -13,9 +13,9 @@ import (
 func GoRecording(config *Config, video *Video) {
 	//临时变量
 	ffmpeg := &config.FFmpeg
-	tempPath := video.Name
+	tempPath := config.Path + "/" + video.Name
 	if ffmpeg.Exec != "" {
-		tempPath = video.Name + "/temp"
+		tempPath += "/temp"
 	}
 	//断开后重连
 	for {
