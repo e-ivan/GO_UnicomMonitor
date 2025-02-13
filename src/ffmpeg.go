@@ -9,11 +9,11 @@ import (
 )
 
 // FFmpeg 转码
-func GoFFmpeg(ffmpeg FFmpeg, video Video, tempPath string) {
+func GoFFmpeg(ffmpeg FFmpeg, tempPath string) {
 	//整理并合并文件
 	filePath := organizeFiles(tempPath)
 	//转码文件
-	transcodFiles(ffmpeg, filePath, video.Name)
+	transcodFiles(ffmpeg, filePath)
 }
 
 // 整理文件
@@ -45,23 +45,24 @@ func mergeFiles(files []string, newName string) {
 }
 
 // 转码文件
-func transcodFiles(ffmpeg FFmpeg, filePath string, path string) {
-	//FmtPrint("转码文件：" + filePath)
+func transcodFiles(ffmpeg FFmpeg, filePath string) {
+	//获取绝对路径
+	filePath, _ = filepath.Abs(filePath)
 	//默认复制文件
-	fileName := filepath.Base(filePath)
-	outputFile := path + "/" + strings.Replace(fileName, ".bin", ".mp4", -1)
-	cmd := exec.Command(ffmpeg.Exec, "-i", filePath, "-c", "copy", "-map", "0", outputFile)
+	outputFile := strings.Replace(filePath, ".bin", ".mp4", -1)
+	cmd := exec.Command(ffmpeg.Exec, "-i", filePath, "-c", "copy", outputFile)
 	//使用CPU编码
 	if ffmpeg.Type == "cpu" {
 		cmd = exec.Command(ffmpeg.Exec, "-i", filePath, outputFile)
 	} else
 	//使用GPU编码
 	if ffmpeg.Type == "gpu" {
-		cmd = exec.Command(ffmpeg.Exec, "-c:v", ffmpeg.Gpu, "-i", filePath, outputFile)
+		cmd = exec.Command(ffmpeg.Exec, "-vcodec", ffmpeg.Gpu, "-i", filePath, outputFile)
 	}
 	//执行命令
 	err := cmd.Run()
 	if err == nil {
+		FmtPrint("转码完成：" + outputFile)
 		//删除转码前的文件
 		os.Remove(filePath)
 	}

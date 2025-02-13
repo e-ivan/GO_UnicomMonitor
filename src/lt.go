@@ -14,9 +14,6 @@ func GoRecording(config *Config, video *Video) {
 	//临时变量
 	ffmpeg := &config.FFmpeg
 	tempPath := config.Path + "/" + video.Name
-	if ffmpeg.Exec != "" {
-		tempPath += "/temp"
-	}
 	//断开后重连
 	for {
 		//连接服务器传输数据
@@ -36,7 +33,7 @@ func GoRecording(config *Config, video *Video) {
 		FmtPrint("录制完成：" + fileName)
 		//视频转码
 		if ffmpeg.Exec != "" {
-			go GoFFmpeg(*ffmpeg, *video, tempPath)
+			go GoFFmpeg(*ffmpeg, tempPath)
 		}
 	}
 }

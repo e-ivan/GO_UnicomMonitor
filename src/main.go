@@ -10,11 +10,14 @@ import (
 func main() {
 	FmtPrint("开源：https://github.com/zgcwkjOpenProject/GO_UnicomMonitor")
 	FmtPrint("作者：zgcwkj")
-	FmtPrint("版本：20250208_001")
+	FmtPrint("版本：20250213_001")
 	FmtPrint("请尊重开源协议，保留作者信息！")
 	FmtPrint("")
 	//读取配置文件
 	config := GetConfig()
+	if config.Path == "" {
+		config.Path = "./"
+	}
 	//启动录制协程
 	FmtPrint("启动录制服务，存储路径：" + config.Path)
 	for _, video := range config.Video {
@@ -34,9 +37,6 @@ func main() {
 	}()
 	//等待退出
 	if config.Host != "" {
-		if config.Path == "" {
-			config.Path = "./"
-		}
 		//网站服务
 		FmtPrint("启动网站服务：" + config.Host)
 		fs := http.FileServer(http.Dir(config.Path))
