@@ -20,10 +20,6 @@
 host -> 监听端口
 path -> 存储位置（默认程序目录）
 sleep -> 检查间隔时长（单位：秒）
-ffmpeg -> FFmpeg 配置
-    exec -> 程序路径
-    type -> cpu/gpu（留空时，调用 -c copy 命令）
-    gpu -> GPU 解码参数
 video -> 摄像头配置（数组）
     wsHost -> 消息地址（WebSocket URL）
     paramMsg -> 信息参数（不要“_paramStr_=”字符）
@@ -32,13 +28,10 @@ video -> 摄像头配置（数组）
     count -> 保留文件数量
 ```
 
-> PS: 没有 ffmpeg 时，可以删除整块 Json
-
 ## 开发计划
 
 - [x] 摄像头录像，~~摄像头录音~~
 - [x] 支持多个摄像头和断开重连
 - [x] 支持设置摄像头的录像文件上限
-- [x] 支持内部调用 FFmpeg 命令完成转码功能
 - [x] 支持网页直接查看录制的视频文件
 - [x] 支持自定义视频存储路径

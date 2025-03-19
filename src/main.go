@@ -1,16 +1,12 @@
 package main
 
-import (
-	"net/http"
-	"strings"
-	"time"
-)
+import "time"
 
 // 主函数
 func main() {
 	FmtPrint("开源：https://github.com/zgcwkjOpenProject/GO_UnicomMonitor")
 	FmtPrint("作者：zgcwkj")
-	FmtPrint("版本：20250213_001")
+	FmtPrint("版本：20250319_001")
 	FmtPrint("请尊重开源协议，保留作者信息！")
 	FmtPrint("")
 	//读取配置文件
@@ -35,32 +31,18 @@ func main() {
 			}
 		}
 	}()
-	//等待退出
-	if config.Host != "" {
-		//网站服务
-		FmtPrint("启动网站服务：" + config.Host)
-		fs := http.FileServer(http.Dir(config.Path))
-		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			//排除某些文件
-			if strings.HasSuffix(r.URL.Path, ".go") {
-				http.NotFound(w, r)
-				return
-			}
-			//排除某个特定的文件
-			if r.URL.Path == "/config.json" {
-				http.NotFound(w, r)
-				return
-			}
-			//如果没有被排除，继续执行文件服务器
-			fs.ServeHTTP(w, r)
-		})
-		http.ListenAndServe(config.Host, nil)
-	} else {
+	//运行类型
+	if config.Host == "" {
 		//后台运行
 		for {
+			FmtPrint("程序运行正常")
 			timeout := time.Duration(config.Sleep)
 			time.Sleep(timeout * time.Second)
-			FmtPrint("程序运行正常")
 		}
+	} else {
+		//网站服务
+		FmtPrint("启动网站服务：" + config.Host)
+		//启动网站服务
+		StartHttp(&config)
 	}
 }

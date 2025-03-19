@@ -1,6 +1,7 @@
 ﻿package main
 
 import (
+	"crypto/tls"
 	"net/url"
 	"os"
 	"strconv"
@@ -12,7 +13,6 @@ import (
 // 录制
 func GoRecording(config *Config, video *Video) {
 	//临时变量
-	ffmpeg := &config.FFmpeg
 	tempPath := config.Path + "/" + video.Name
 	//断开后重连
 	for {
@@ -26,15 +26,11 @@ func GoRecording(config *Config, video *Video) {
 			continue
 		}
 		//文件名称
-		fileName := getFileName(tempPath) + ".flv"
+		fileName := getFileName(tempPath) + ".hevc"
 		//保存文件
 		saveFile(fileName, &bytes)
 		//录制完成
 		FmtPrint("录制完成：" + fileName)
-		//视频转码
-		if ffmpeg.Exec != "" {
-			go GoFFmpeg(*ffmpeg, tempPath)
-		}
 	}
 }
 
@@ -46,9 +42,16 @@ func linkServer(video *Video) []byte {
 		Host:   video.WsHost,
 		Path:   "/h5player/live",
 	}
-	conn, _, err := websocket.DefaultDialer.Dial(uri.String(), nil)
+	//跳过证书验证
+	dialer := websocket.Dialer{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+	//发起连接
+	conn, _, err := dialer.Dial(uri.String(), nil)
 	if err != nil {
-		FmtPrint("无法连接到服务器")
+		FmtPrint("无法连接到服务器", err)
 		return bytes
 	}
 	defer conn.Close()
@@ -68,14 +71,12 @@ func linkServer(video *Video) []byte {
 		}
 		//检查特定条件
 		if len(response) > 1 {
-			//拼接数据
-			bytes = append(bytes, response[:]...)
 			//打印数据的长度
 			//FmtPrint("数据长度：", len(bytes))
+			//拼接数据
+			bytes = append(bytes, response[:]...)
 			//结束条件
 			if len(bytes) > 1024*1024*video.Size {
-				//裁剪数据
-				bytes = bytes[580:]
 				//结束
 				return bytes
 			}

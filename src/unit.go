@@ -12,27 +12,19 @@ import (
 
 // 配置文件
 type Config struct {
-	Host   string  `json:"host"`
-	Path   string  `jsson:"path"`
-	Sleep  int     `jsson:"sleep"`
-	FFmpeg FFmpeg  `json:"ffmpeg"`
-	Video  []Video `json:"video"`
+	Host  string  `json:"host"`   // 监听地址
+	Path  string  `jsson:"path"`  // 保存路径
+	Sleep int     `jsson:"sleep"` // 重连间隔
+	Video []Video `json:"video"`  // 视频录制配置
 }
 
-// 视频转码配置
-type FFmpeg struct {
-	Exec string `json:"exec"`
-	Type string `json:"type"`
-	Gpu  string `json:"gpu"`
-}
-
-// 视频录像机配置
+// 视频录制配置
 type Video struct {
-	WsHost   string `json:"wsHost"`
-	ParamMsg string `json:"paramMsg"`
-	Name     string `json:"name"`
-	Size     int    `json:"size"`
-	Count    int    `json:"count"`
+	WsHost   string `json:"wsHost"`   // 连接地址
+	ParamMsg string `json:"paramMsg"` // 连接参数
+	Name     string `json:"name"`     // 名称
+	Size     int    `json:"size"`     // 截断大小
+	Count    int    `json:"count"`    // 数量
 }
 
 // 获取配置
@@ -81,9 +73,67 @@ func DeleteOldFiles(dirPath string, filesToKeep int) {
 // 定义内置的打印语句
 func FmtPrint(data ...any) {
 	date := time.Now().Format("2006-01-02 15:04:05")
+	processedData, hasFormat, formatStr := processArgs(data...)
+	// 输出
 	if len(data) == 1 {
-		fmt.Println(date+": ", data[0])
+		fmt.Printf("%s: %v\n", date, processedData[0])
+	} else if hasFormat {
+		fmt.Printf("%s: "+formatStr+"\n", append([]any{date}, processedData[1:]...)...)
 	} else {
-		fmt.Println(date+": ", data)
+		fmt.Printf("%s: %v\n", date, processedData)
 	}
+}
+
+// 写日志
+func LogWrite(data ...any) {
+	date := time.Now().Format("2006-01-02 15:04:05")
+	processedData, hasFormat, formatStr := processArgs(data...)
+	// 检查日志文件夹
+	dirPath := "logs"
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		err = os.MkdirAll(dirPath, 0777)
+		if err != nil {
+			FmtPrint("日志文件夹创建失败", err)
+			return
+		}
+	}
+	// 打开日志文件
+	fileName := time.Now().Format("2006-01-02")
+	filePath := dirPath + "/" + fileName + ".log"
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		FmtPrint("日志文件创建失败", err)
+		return
+	}
+	defer file.Close()
+	// 写入日志
+	if len(data) == 1 {
+		file.WriteString(date + ": " + fmt.Sprintf("%v", processedData[0]) + "\n")
+	} else if hasFormat {
+		file.WriteString(date + ": " + fmt.Sprintf(formatStr, processedData[1:]...) + "\n")
+	} else {
+		file.WriteString(date + ": " + fmt.Sprintf("%v", processedData) + "\n")
+	}
+}
+
+// 处理参数列表
+func processArgs(data ...any) ([]any, bool, string) {
+	processedData := make([]any, len(data))
+	for i, item := range data {
+		if bytes, ok := item.([]byte); ok {
+			processedData[i] = string(bytes)
+		} else {
+			processedData[i] = item
+		}
+	}
+	// 检查是否是格式化字符串
+	hasFormat := false
+	formatStr := "%v"
+	if len(data) > 1 {
+		if format, ok := processedData[0].(string); ok {
+			hasFormat = true
+			formatStr = format
+		}
+	}
+	return processedData, hasFormat, formatStr
 }
