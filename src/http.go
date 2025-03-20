@@ -6,22 +6,39 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // 启动网站服务
 func StartHttp(config *Config) {
-	//静态目录
-	http.Handle("/", http.FileServer(http.Dir("static")))
-	//文件列表
-	http.HandleFunc("/files", func(w http.ResponseWriter, r *http.Request) {
+	// 解析用户名和密码
+	username := strings.Split(config.User, ":")[0]
+	password := strings.Split(config.User, ":")[1]
+	// 静态目录需要认证
+	http.Handle("/", basicAuth(http.FileServer(http.Dir("static")).ServeHTTP, username, password))
+	// 文件列表需要认证
+	http.HandleFunc("/files", basicAuth(func(w http.ResponseWriter, r *http.Request) {
 		handleFileList(w, r, config.Path)
-	})
-	//文件内容
-	http.HandleFunc("/get", func(w http.ResponseWriter, r *http.Request) {
+	}, username, password))
+	// 文件内容需要认证
+	http.HandleFunc("/get", basicAuth(func(w http.ResponseWriter, r *http.Request) {
 		handleFileContent(w, r, config.Path)
-	})
-	//启动服务器
+	}, username, password))
+	// 启动服务器
 	http.ListenAndServe(config.Host, nil)
+}
+
+// 身份验证中间件
+func basicAuth(next http.HandlerFunc, username, password string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, pass, ok := r.BasicAuth()
+		if !ok || user != username || pass != password {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
 }
 
 // 处理文件列表请求

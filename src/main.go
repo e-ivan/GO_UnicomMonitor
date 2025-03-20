@@ -6,7 +6,7 @@ import "time"
 func main() {
 	FmtPrint("开源：https://github.com/zgcwkjOpenProject/GO_UnicomMonitor")
 	FmtPrint("作者：zgcwkj")
-	FmtPrint("版本：20250319_001")
+	FmtPrint("版本：20250320_001")
 	FmtPrint("请尊重开源协议，保留作者信息！")
 	FmtPrint("")
 	//读取配置文件

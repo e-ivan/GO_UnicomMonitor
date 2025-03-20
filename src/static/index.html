@@ -2,63 +2,65 @@
 
 <html>
 <head>
-<meta charset='utf-8'>
-<title>libde265.js</title>
-<script type="text/javascript" src="libde265.js"></script>
-<script>
-<!--
-var VIDEO_URL = "get?file=spreedmovie.hevc";
-var player = null;
-
-window.onload = function() {
-    var video = document.getElementById("video");
-    var status = document.getElementById("status");
-
-    var playback = function(event) {
-        event.preventDefault();
-        if (player) {
-            player.stop();
-        }
-
-        console.log("Playing with libde265", libde265.de265_get_version());
-        player = new libde265.RawPlayer(video);
-        player.set_status_callback(function(msg, fps) {
-            player.disable_filters(true);
-            switch (msg) {
-            case "loading":
-                status.innerHTML = "Loading movie...";
-                break;
-            case "initializing":
-                status.innerHTML = "Initializing...";
-                break;
-            case "playing":
-                status.innerHTML = "Playing...";
-                break;
-            case "stopped":
-                status.innerHTML = "";
-                break;
-            case "fps":
-                status.innerHTML = Number(fps).toFixed(2) + " fps";
-                break;
-            default:
-                status.innerHTML = msg;
-            }
-        });
-        player.playback(VIDEO_URL);
-    };
-
-    var button = document.getElementById("play");
-    if (button.addEventListener) {
-        button.addEventListener("click", playback, false);
-    } else if (button.attachEvent){
-        button.attachEvent('onclick', playback);
-    }
-};
--->
-</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="index.css?v20250320">
+    <title>视频监控系统</title>
+</head>
 <body>
-    <button id="play">Play</button>
-    <span id="status"></span>
-    <canvas id="video" width="0" height="0"></canvas>
+    <button class="toggle-btn" id="toggleBtn">&lt;</button>
+    <div class="tree-container" id="treeContainer">
+        <ul class="tree-list" id="fileTree"></ul>
+    </div>
+    <div class="video-container">
+        <div class="video-player">
+            <iframe id="videoFrame" src=""></iframe>
+        </div>
+    </div>
+    <script>
+        async function loadFileTree() {
+            try {
+                const response = await fetch('/files');
+                const files = await response.json();
+
+                const treeContainer = document.getElementById('fileTree');
+                treeContainer.innerHTML = '';
+
+                files.forEach(file => {
+                    const li = document.createElement('li');
+                    li.className = 'tree-item';
+                    li.textContent = file;
+                    li.onclick = () => {
+                        // 移除其他项的高亮
+                        document.querySelectorAll('.tree-item').forEach(item => {
+                            item.classList.remove('active');
+                        });
+                        // 添加当前项的高亮
+                        li.classList.add('active');
+                        // 更新 iframe 地址
+                        document.getElementById('videoFrame').src = `libde265.html?file=${encodeURIComponent(file)}`;
+                        // 收起左侧树形列表
+                        toggleTreeContainer(true);
+                    };
+                    treeContainer.appendChild(li);
+                });
+            } catch (error) {
+                console.error('加载文件列表失败:', error);
+            }
+        }
+        // 添加收起展开功能
+        const toggleBtn = document.getElementById('toggleBtn');
+        const treeContainer = document.getElementById('treeContainer');
+        // 展开或收起左侧树形列表
+        function toggleTreeContainer(status) {
+            const collapsed = status !== undefined ? status : !treeContainer.classList.contains('collapsed');
+            treeContainer.classList.toggle('collapsed', collapsed);
+            toggleBtn.classList.toggle('collapsed', collapsed);
+            toggleBtn.textContent = collapsed ? '>' : '<';
+        }
+        toggleBtn.addEventListener('click', () => toggleTreeContainer());
+        // 初始加载文件列表
+        window.addEventListener('load', loadFileTree);
+    </script>
 </body>
 </html>

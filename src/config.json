@@ -1,6 +1,7 @@
 {
   "host": ":25678",
-  "path": "./",
+  "user": "root:root",
+  "path": "./videos/",
   "sleep": 60,
   "video": [
     {

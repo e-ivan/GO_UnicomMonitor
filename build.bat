@@ -1,90 +1,34 @@
 @echo off
-setlocal
-
-echo by zgcwkj
+rem by zgcwkj
 echo build start
-
-rem config
-set outPath=../build/unicomMonitor
-cd ./src
-
-rem windows_386
-set CGO_ENABLED=0
-set GOOS=windows
-set GOARCH=386
-go build -ldflags="-w -s" -trimpath -o %outPath%_windows_386.exe
-
-rem windows_amd64
-set CGO_ENABLED=0
-set GOOS=windows
-set GOARCH=amd64
-go build -ldflags="-w -s" -trimpath -o %outPath%_windows_amd64.exe
-
-rem windows_arm64
-set CGO_ENABLED=0
-set GOOS=windows
-set GOARCH=arm64
-go build -ldflags="-w -s" -trimpath -o %outPath%_windows_arm64.exe
-
-rem darwin_amd64
-set CGO_ENABLED=0
-set GOOS=darwin
-set GOARCH=amd64
-go build -ldflags="-w -s" -trimpath -o %outPath%_darwin_amd64
-
-rem darwin_arm64
-set CGO_ENABLED=0
-set GOOS=darwin
-set GOARCH=arm64
-go build -ldflags="-w -s" -trimpath -o %outPath%_darwin_arm64
-
-rem linux_386
-set CGO_ENABLED=0
-set GOOS=linux
-set GOARCH=386
-go build -ldflags="-w -s" -trimpath -o %outPath%_linux_386
-
-rem linux_amd64
-set CGO_ENABLED=0
-set GOOS=linux
-set GOARCH=amd64
-go build -ldflags="-w -s" -trimpath -o %outPath%_linux_amd64
-
-rem linux_arm
-set CGO_ENABLED=0
-set GOOS=linux
-set GOARCH=arm
-go build -ldflags="-w -s" -trimpath -o %outPath%_linux_arm
-
-rem linux_arm64
-set CGO_ENABLED=0
-set GOOS=linux
-set GOARCH=arm64
-go build -ldflags="-w -s" -trimpath -o %outPath%_linux_arm64
-
-rem linux_mips
-set CGO_ENABLED=0
-set GOOS=linux
-set GOARCH=mips
-go build -ldflags="-w -s" -trimpath -o %outPath%_linux_mips
-
-rem linux_mipsle
-set CGO_ENABLED=0
-set GOOS=linux
-set GOARCH=mipsle
-go build -ldflags="-w -s" -trimpath -o %outPath%_linux_mipsle
-
-rem linux_mips64
-set CGO_ENABLED=0
-set GOOS=linux
-set GOARCH=mips64
-go build -ldflags="-w -s" -trimpath -o %outPath%_linux_mips64
-
-rem linux_mips64le
-set CGO_ENABLED=0
-set GOOS=linux
-set GOARCH=mips64le
-go build -ldflags="-w -s" -trimpath -o %outPath%_linux_mips64le
-
-echo build success
+rem 根目录
+set rootPath=%cd%
+set outPath=%rootPath%/build
+rem 编译目标平台
+set windows_archs=386 amd64 arm64
+set linux_archs=386 amd64 arm64 mips mipsle mips64 mips64le
+set darwin_archs=amd64 arm64
+set freebsd_archs=386 amd64 arm64
+rem 启用延迟变量扩展功能
+setlocal EnableDelayedExpansion
+rem 开始编译
+for %%o in (windows linux darwin freebsd) do (
+    for %%b in (!%%o_archs!) do (
+            echo building for %%o/%%b
+            rem 设置编译环境变量
+            set CGO_ENABLED=0
+            set GOOS=%%o
+            set GOARCH=%%b
+            rem 设置可执行文件后缀
+            set exe_suffix=
+            if "%%o"=="windows" set exe_suffix=.exe
+            rem 编译程序
+            cd %rootPath%/src
+            go build -ldflags="-w -s" -trimpath -o %outPath%/unicomMonitor_%%o_%%b!exe_suffix!
+        )
+    )
+)
+rem 回到根目录
+cd %rootPath%
+rem 结束
 pause

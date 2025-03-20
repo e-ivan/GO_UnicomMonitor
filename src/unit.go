@@ -12,19 +12,20 @@ import (
 
 // 配置文件
 type Config struct {
-	Host  string  `json:"host"`   // 监听地址
-	Path  string  `jsson:"path"`  // 保存路径
-	Sleep int     `jsson:"sleep"` // 重连间隔
-	Video []Video `json:"video"`  // 视频录制配置
+	Host  string  `json:"host"`  // 监听地址
+	User  string  `json:"user"`  // 用户信息
+	Path  string  `json:"path"`  // 保存路径
+	Sleep int     `json:"sleep"` // 重连间隔
+	Video []Video `json:"video"` // 视频录制配置
 }
 
 // 视频录制配置
 type Video struct {
 	WsHost   string `json:"wsHost"`   // 连接地址
 	ParamMsg string `json:"paramMsg"` // 连接参数
-	Name     string `json:"name"`     // 名称
+	Name     string `json:"name"`     // 设备名称
 	Size     int    `json:"size"`     // 截断大小
-	Count    int    `json:"count"`    // 数量
+	Count    int    `json:"count"`    // 存储数量
 }
 
 // 获取配置
