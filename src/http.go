@@ -1,13 +1,18 @@
 package main
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+//go:embed static/*
+var staticFS embed.FS // 静态文件
 
 // 启动网站服务
 func StartHttp(config *Config) {
@@ -15,7 +20,10 @@ func StartHttp(config *Config) {
 	username := strings.Split(config.User, ":")[0]
 	password := strings.Split(config.User, ":")[1]
 	// 静态目录需要认证
-	http.Handle("/", basicAuth(http.FileServer(http.Dir("static")).ServeHTTP, username, password))
+	http.HandleFunc("/", basicAuth(func(w http.ResponseWriter, r *http.Request) {
+		subFS, _ := fs.Sub(staticFS, "static")
+		http.FileServer(http.FS(subFS)).ServeHTTP(w, r)
+	}, username, password))
 	// 文件列表需要认证
 	http.HandleFunc("/files", basicAuth(func(w http.ResponseWriter, r *http.Request) {
 		handleFileList(w, r, config.Path)
@@ -100,7 +108,7 @@ func listFiles(dir string) ([]string, error) {
 			return err
 		}
 		if !info.IsDir() {
-			// 将路径转换为相对于start目录的路径
+			// 将路径转换为相对路径
 			relPath, err := filepath.Rel(dir, path)
 			if err != nil {
 				return err

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="index.css?v20250320">
+    <link rel="stylesheet" href="index.css?v20250325">
     <title>视频监控系统</title>
 </head>
 <body>
@@ -22,27 +22,79 @@
             try {
                 const response = await fetch('/files');
                 const files = await response.json();
-
+                // 清空树形列表
                 const treeContainer = document.getElementById('fileTree');
                 treeContainer.innerHTML = '';
-
+                // 构建树形结构
+                const tree = {};
                 files.forEach(file => {
+                    const parts = file.split(/[/\\]/);
+                    let current = tree;
+                    parts.forEach((part, index) => {
+                        if (!current[part]) {
+                            current[part] = {
+                                isFile: index === parts.length - 1,
+                                children: {},
+                                fullPath: parts.slice(0, index + 1).join(file.includes('/') ? '/' : '\\')
+                            };
+                        }
+                        current = current[part].children;
+                    });
+                });
+                // 递归创建树形DOM
+                function createTreeNode(node, name) {
                     const li = document.createElement('li');
-                    li.className = 'tree-item';
-                    li.textContent = file;
-                    li.onclick = () => {
-                        // 移除其他项的高亮
-                        document.querySelectorAll('.tree-item').forEach(item => {
-                            item.classList.remove('active');
+                    const content = document.createElement('div');
+                    content.className = 'tree-item';
+                    // 如果有子节点，添加展开/收起图标
+                    if (Object.keys(node.children).length > 0) {
+                        const toggle = document.createElement('span');
+                        toggle.className = 'toggle-icon';
+                        toggle.textContent = '▶';
+                        // 创建切换显示状态的函数
+                        const toggleDisplay = (e) => {
+                            e.stopPropagation();
+                            const ul = content.nextElementSibling;
+                            const isExpanded = toggle.textContent === '▼';
+                            toggle.textContent = isExpanded ? '▶' : '▼';
+                            ul.style.display = isExpanded ? 'none' : 'block';
+                        };
+                        // 为图标和内容div都添加点击事件
+                        toggle.onclick = toggleDisplay;
+                        content.onclick = toggleDisplay;
+                        // 添加图标
+                        content.appendChild(toggle);
+                    }
+                    // 添加文本
+                    const text = document.createElement('span');
+                    text.textContent = name;
+                    content.appendChild(text);
+                    // 如果是文件，覆盖之前的点击事件
+                    if (node.isFile) {
+                        content.onclick = () => {
+                            document.querySelectorAll('.tree-item').forEach(item => {
+                                item.classList.remove('active');
+                            });
+                            content.classList.add('active');
+                            document.getElementById('videoFrame').src = `libde265.html?file=${encodeURIComponent(node.fullPath)}`;
+                        };
+                    }
+                    li.appendChild(content);
+                    // 处理子节点
+                    if (Object.keys(node.children).length > 0) {
+                        const ul = document.createElement('ul');
+                        ul.style.display = 'none';
+                        ul.className = 'subtree';
+                        Object.entries(node.children).forEach(([childName, childNode]) => {
+                            ul.appendChild(createTreeNode(childNode, childName));
                         });
-                        // 添加当前项的高亮
-                        li.classList.add('active');
-                        // 更新 iframe 地址
-                        document.getElementById('videoFrame').src = `libde265.html?file=${encodeURIComponent(file)}`;
-                        // 收起左侧树形列表
-                        toggleTreeContainer(true);
-                    };
-                    treeContainer.appendChild(li);
+                        li.appendChild(ul);
+                    }
+                    return li;
+                }
+                // 渲染树
+                Object.entries(tree).forEach(([name, node]) => {
+                    treeContainer.appendChild(createTreeNode(node, name));
                 });
             } catch (error) {
                 console.error('加载文件列表失败:', error);
@@ -61,6 +113,8 @@
         toggleBtn.addEventListener('click', () => toggleTreeContainer());
         // 初始加载文件列表
         window.addEventListener('load', loadFileTree);
+        // 输出版权信息
+        console.log('开源地址：https://github.com/zgcwkjOpenProject/GO_UnicomMonitor');
     </script>
 </body>
 </html>

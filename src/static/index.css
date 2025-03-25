@@ -29,14 +29,16 @@ body {
     list-style: none;
 }
 
+/* 树形节点样式 */
 .tree-item {
-    margin: 5px 0;
     cursor: pointer;
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    border-radius: 4px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: 5px 10px;
-    border-radius: 4px;
 }
 
 .tree-item:hover {
@@ -46,6 +48,19 @@ body {
 .tree-item.active {
     background-color: #1890ff;
     color: white;
+}
+
+.toggle-icon {
+    margin-right: 5px;
+    cursor: pointer;
+    width: 16px;
+    display: inline-block;
+}
+
+.subtree {
+    margin-left: 20px;
+    list-style: none;
+    padding-left: 0;
 }
 
 /* 收起展开相关样式 */

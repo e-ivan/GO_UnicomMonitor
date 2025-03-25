@@ -1,12 +1,10 @@
 package main
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"os"
-	"path/filepath"
-	"sort"
 	"time"
 )
 
@@ -25,8 +23,11 @@ type Video struct {
 	ParamMsg string `json:"paramMsg"` // 连接参数
 	Name     string `json:"name"`     // 设备名称
 	Size     int    `json:"size"`     // 截断大小
-	Count    int    `json:"count"`    // 存储数量
+	Count    int    `json:"count"`    // 保留天数
 }
+
+//go:embed config.json
+var defaultConfig []byte // 默认配置
 
 // 获取配置
 func GetConfig() Config {
@@ -34,7 +35,18 @@ func GetConfig() Config {
 	filePath := "config.json"
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		FmtPrint("配置文件不存在", err)
+		//不存在时，生成一个配置文件
+		err = os.WriteFile(filePath, defaultConfig, 0666)
+		if err != nil {
+			FmtPrint("配置文件创建失败", err)
+			os.Exit(0)
+		}
+		FmtPrint("已生成默认配置文件，请更改配置文件后再启动程序！")
+		//等待用户输入
+		FmtPrint("按回车键退出程序...")
+		var input string
+		fmt.Scanln(&input)
+		//退出程序
 		os.Exit(0)
 	}
 	err = json.Unmarshal(data, &config)
@@ -43,32 +55,6 @@ func GetConfig() Config {
 		os.Exit(0)
 	}
 	return config
-}
-
-// 删除文件夹下的旧文件
-func DeleteOldFiles(dirPath string, filesToKeep int) {
-	//读取文件
-	fileInfos := []fs.FileInfo{}
-	filePaths, _ := filepath.Glob(filepath.Join(dirPath, "*"))
-	for _, filePath := range filePaths {
-		info, _ := os.Stat(filePath)
-		if info.Mode().IsRegular() {
-			fileInfos = append(fileInfos, info)
-		}
-	}
-	//检查文件数量
-	if len(fileInfos) <= filesToKeep {
-		return
-	}
-	//按时间排序
-	sort.Slice(fileInfos, func(i, j int) bool {
-		return fileInfos[i].ModTime().After(fileInfos[j].ModTime())
-	})
-	//删除最旧的文件
-	for i := filesToKeep; i < len(fileInfos); i++ {
-		oldFile := filepath.Join(dirPath, fileInfos[i].Name())
-		_ = os.Remove(oldFile)
-	}
 }
 
 // 定义内置的打印语句

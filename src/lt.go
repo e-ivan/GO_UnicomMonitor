@@ -2,15 +2,18 @@
 
 import (
 	"crypto/tls"
+	"io/fs"
 	"net/url"
 	"os"
+	"path/filepath"
+	"sort"
 	"strconv"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
 
-// 录制
+// 开始录制
 func GoRecording(config *Config, video *Video) {
 	//临时变量
 	tempPath := config.Path + "/" + video.Name
@@ -86,19 +89,21 @@ func linkServer(video *Video) []byte {
 
 // 获取文件名称
 func getFileName(dirPath string) string {
+	//添加日期文件夹
+	dateFolder := time.Now().Format("20060102")
+	fullPath := dirPath + "/" + dateFolder
 	//检查文件夹是否存在
-	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 		//文件夹不存在，创建它
-		err := os.MkdirAll(dirPath, 0755)
+		err := os.MkdirAll(fullPath, 0755)
 		if err != nil {
 			FmtPrint("创建文件夹失败：", err)
 			os.Exit(0)
 		}
-		FmtPrint("创建文件夹：" + dirPath)
 	}
 	//文件名称
-	fileName := time.Now().Format("20060102_150405")
-	tempPathh := dirPath + "/" + fileName
+	fileName := time.Now().Format("150405")
+	tempPathh := fullPath + "/" + fileName
 	return tempPathh
 }
 
@@ -111,4 +116,33 @@ func saveFile(fileName string, bytes *[]byte) {
 	}
 	defer file.Close()
 	file.Write(*bytes)
+}
+
+// 删除文件夹下的旧文件夹
+func DeleteOldFiles(config *Config, video *Video) {
+	//临时变量
+	dirPath := config.Path + "/" + video.Name
+	foldersToKeep := video.Count
+	//读取文件夹
+	var folders []fs.FileInfo
+	entries, _ := os.ReadDir(dirPath)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			info, _ := os.Stat(filepath.Join(dirPath, entry.Name()))
+			folders = append(folders, info)
+		}
+	}
+	//检查文件夹数量
+	if len(folders) <= foldersToKeep {
+		return
+	}
+	//按时间排序
+	sort.Slice(folders, func(i, j int) bool {
+		return folders[i].ModTime().After(folders[j].ModTime())
+	})
+	//删除最旧的文件夹
+	for i := foldersToKeep; i < len(folders); i++ {
+		oldFolder := filepath.Join(dirPath, folders[i].Name())
+		_ = os.RemoveAll(oldFolder)
+	}
 }
