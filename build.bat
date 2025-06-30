@@ -3,7 +3,7 @@ rem by zgcwkj
 echo build start
 rem 根目录
 set rootPath=%cd%
-set outPath=%rootPath%/build
+set outPath=%rootPath%/build/unicomMonitor_
 rem 编译目标平台
 set windows_archs=386 amd64 arm64
 set linux_archs=386 amd64 arm64 mips mipsle mips64 mips64le
@@ -24,7 +24,7 @@ for %%o in (windows linux darwin freebsd) do (
             if "%%o"=="windows" set exe_suffix=.exe
             rem 编译程序
             cd %rootPath%/src
-            go build -ldflags="-w -s" -trimpath -o %outPath%/unicomMonitor_%%o_%%b!exe_suffix!
+            go build -ldflags="-w -s" -trimpath -o %outPath%%%o_%%b!exe_suffix!
         )
     )
 )
