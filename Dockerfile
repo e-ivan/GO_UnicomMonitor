@@ -1,5 +1,5 @@
 # 使用官方 Go 镜像作为构建阶段
-FROM registry.cn-hangzhou.aliyuncs.com/library/golang:1.22-alpine AS builder
+FROM anolis-registry.cn-zhangjiakou.cr.aliyuncs.com/openanolis/golang:1.20.12-23 AS builder
 
 # 设置工作目录
 WORKDIR /app
