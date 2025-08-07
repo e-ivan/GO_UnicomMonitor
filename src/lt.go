@@ -61,7 +61,7 @@ func linkServerAndRecord(video *Video, tempPath string) bool {
 	}
 	
 	//获取当前文件名
-	fileName := getFileName(tempPath) + ".hevc"
+	fileName := getFileName(tempPath) + ".mp4"
 	FmtPrint("开始录制：" + fileName)
 	
 	//创建或打开文件
