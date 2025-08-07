@@ -1,5 +1,8 @@
 {
   "host": ":25678",
+  "stream_host": ":8080",
+  "rtsp_port": 8554,
+  "rtmp_port": 1935,
   "user": "root:root",
   "path": "./videos/",
   "sleep": 60,

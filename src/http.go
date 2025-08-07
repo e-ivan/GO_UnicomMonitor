@@ -32,6 +32,15 @@ func StartHttp(config *Config) {
 	http.HandleFunc("/get", basicAuth(func(w http.ResponseWriter, r *http.Request) {
 		handleFileContent(w, r, config.Path)
 	}, username, password))
+	// 流媒体状态接口（无需认证）
+	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+		if streamServer != nil {
+			streamServer.handleStatus(&gin.Context{})
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte("{}"))
+		}
+	})
 	// 启动服务器
 	http.ListenAndServe(config.Host, nil)
 }

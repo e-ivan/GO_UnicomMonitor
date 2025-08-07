@@ -10,11 +10,14 @@ import (
 
 // 配置文件
 type Config struct {
-	Host  string  `json:"host"`  // 监听地址
-	User  string  `json:"user"`  // 用户信息
-	Path  string  `json:"path"`  // 保存路径
-	Sleep int     `json:"sleep"` // 重连间隔
-	Video []Video `json:"video"` // 视频录制配置
+	Host       string  `json:"host"`       // 监听地址
+	StreamHost string  `json:"stream_host"` // 流媒体服务器地址
+	RTSPPort   int     `json:"rtsp_port"`   // RTSP端口
+	RTMPPort   int     `json:"rtmp_port"`   // RTMP端口
+	User       string  `json:"user"`       // 用户信息
+	Path       string  `json:"path"`       // 保存路径
+	Sleep      int     `json:"sleep"`      // 重连间隔
+	Video      []Video `json:"video"`      // 视频录制配置
 }
 
 // 视频录制配置

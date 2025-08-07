@@ -15,12 +15,10 @@ import (
 
 // 开始录制
 func GoRecording(config *Config, video *Video) {
-	//临时变量
-	tempPath := config.Path + "/" + video.Name
 	//断开后重连
 	for {
 		//连接服务器传输数据
-		success := linkServerAndRecord(video, tempPath)
+		success := linkServerAndStream(video)
 		//检查连接状态
 		if !success {
 			FmtPrint(video.Name + "设备连接失败，稍后自动重连(" + strconv.Itoa(config.Sleep) + ")")
@@ -31,8 +29,8 @@ func GoRecording(config *Config, video *Video) {
 	}
 }
 
-// 连接服务器并持续录制
-func linkServerAndRecord(video *Video, tempPath string) bool {
+// 连接服务器并持续流媒体传输
+func linkServerAndStream(video *Video) bool {
 	uri := url.URL{
 		Scheme: "wss",
 		Host:   video.WsHost,
@@ -60,19 +58,9 @@ func linkServerAndRecord(video *Video, tempPath string) bool {
 		return false
 	}
 	
-	//获取当前文件名
-	fileName := getFileName(tempPath) + ".mp4"
-	FmtPrint("开始录制：" + fileName)
+	FmtPrint("开始流媒体传输：" + video.Name)
 	
-	//创建或打开文件
-	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		FmtPrint("创建文件失败: ", err)
-		return false
-	}
-	defer file.Close()
-	
-	//持续接收视频流并写入文件
+	//持续接收视频流并发送到流媒体服务器
 	for {
 		_, response, err := conn.ReadMessage()
 		if err != nil {
@@ -82,15 +70,10 @@ func linkServerAndRecord(video *Video, tempPath string) bool {
 		
 		//检查数据有效性
 		if len(response) > 1 {
-			//直接写入文件
-			_, writeErr := file.Write(response)
-			if writeErr != nil {
-				FmtPrint("写入文件失败：", writeErr)
-				return false
+			//发送到流媒体服务器
+			if streamServer != nil {
+				streamServer.AddStreamData(video.Name, response)
 			}
-			
-			//强制刷新缓冲区，确保数据及时写入磁盘
-			file.Sync()
 		}
 	}
 }
