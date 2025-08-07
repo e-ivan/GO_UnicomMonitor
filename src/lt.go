@@ -20,24 +20,82 @@ func GoRecording(config *Config, video *Video) {
 	//断开后重连
 	for {
 		//连接服务器传输数据
-		bytes := linkServer(video)
-		//检查数据
-		if len(bytes) == 0 {
+		success := linkServerAndRecord(video, tempPath)
+		//检查连接状态
+		if !success {
 			FmtPrint(video.Name + "设备连接失败，稍后自动重连(" + strconv.Itoa(config.Sleep) + ")")
 			timeout := time.Duration(config.Sleep)
 			time.Sleep(timeout * time.Second)
 			continue
 		}
-		//文件名称
-		fileName := getFileName(tempPath) + ".hevc"
-		//保存文件
-		saveFile(fileName, &bytes)
-		//录制完成
-		FmtPrint("录制完成：" + fileName)
 	}
 }
 
-// 连接服务器
+// 连接服务器并持续录制
+func linkServerAndRecord(video *Video, tempPath string) bool {
+	uri := url.URL{
+		Scheme: "wss",
+		Host:   video.WsHost,
+		Path:   "/h5player/live",
+	}
+	//跳过证书验证
+	dialer := websocket.Dialer{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+	//发起连接
+	conn, _, err := dialer.Dial(uri.String(), nil)
+	if err != nil {
+		FmtPrint("无法连接到服务器", err)
+		return false
+	}
+	defer conn.Close()
+	
+	//发送消息
+	message := "_paramStr_=" + video.ParamMsg
+	err = conn.WriteMessage(websocket.TextMessage, []byte(message))
+	if err != nil {
+		FmtPrint("发送消息失败：", err)
+		return false
+	}
+	
+	//获取当前文件名
+	fileName := getFileName(tempPath) + ".hevc"
+	FmtPrint("开始录制：" + fileName)
+	
+	//创建或打开文件
+	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		FmtPrint("创建文件失败: ", err)
+		return false
+	}
+	defer file.Close()
+	
+	//持续接收视频流并写入文件
+	for {
+		_, response, err := conn.ReadMessage()
+		if err != nil {
+			FmtPrint("接收消息失败：", err)
+			return false
+		}
+		
+		//检查数据有效性
+		if len(response) > 1 {
+			//直接写入文件
+			_, writeErr := file.Write(response)
+			if writeErr != nil {
+				FmtPrint("写入文件失败：", writeErr)
+				return false
+			}
+			
+			//强制刷新缓冲区，确保数据及时写入磁盘
+			file.Sync()
+		}
+	}
+}
+
+// 连接服务器（保留原函数以备需要）
 func linkServer(video *Video) []byte {
 	bytes := []byte{}
 	uri := url.URL{
