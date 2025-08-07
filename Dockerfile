@@ -17,7 +17,7 @@ COPY src/ .
 RUN CGO_ENABLED=0 GOOS=linux go build -o main .
 
 # 使用轻量级的 alpine 作为运行阶段
-#FROM alpine:latest
+FROM docker.mirrors.ustc.edu.cn/alpine:latest
 
 # 镜像信息
 ENV TZ=Asia/Shanghai
