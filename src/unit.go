@@ -24,7 +24,6 @@ type Video struct {
 	Name        string `json:"name"`        // 设备名称
 	Size        int    `json:"size"`        // 截断大小
 	Count       int    `json:"count"`       // 保留天数
-	ConvertToMp4 bool  `json:"convertToMp4"` // 是否转换为MP4格式
 }
 
 //go:embed config.json

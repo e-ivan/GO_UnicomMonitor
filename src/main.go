@@ -10,16 +10,6 @@ func main() {
 	FmtPrint("请尊重开源协议，保留作者信息！")
 	FmtPrint("")
 	
-	// 检查FFmpeg是否已安装
-	if CheckFFmpegInstalled() {
-		FmtPrint("FFmpeg已安装: " + GetFFmpegVersion())
-		FmtPrint("支持实时HEVC到MP4转换功能")
-	} else {
-		FmtPrint("警告: 未检测到FFmpeg，无法使用实时MP4转换功能")
-		FmtPrint("请安装FFmpeg以启用实时HEVC到MP4转换: https://ffmpeg.org/download.html")
-	}
-	FmtPrint("")
-	
 	//读取配置文件
 	config := GetConfig()
 	if config.Path == "" {
@@ -28,11 +18,7 @@ func main() {
 	//启动录制协程
 	FmtPrint("启动录制服务，存储路径：" + config.Path)
 	for _, video := range config.Video {
-		if video.ConvertToMp4 {
-			FmtPrint("设备 " + video.Name + " 已启用实时MP4转换功能")
-		} else {
-			FmtPrint("设备 " + video.Name + " 录制HEVC格式视频")
-		}
+		FmtPrint("设备 " + video.Name + " 录制HEVC格式视频")
 		go GoRecording(&config, &video)
 	}
 	//删除旧文件协程

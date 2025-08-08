@@ -151,16 +151,9 @@ func linkServerAndRecord(video *Video, tempPath string) bool {
 			//检查是否需要创建新文件
 			if currentFile == nil {
 				//创建第一个文件
-				if video.ConvertToMp4 {
-					currentFileName = getFileName(tempPath) + ".mp4"
-					FmtPrint("开始录制流式MP4格式：" + currentFileName)
-					// 使用流式转换，支持边下载边播放
-					currentFile, err = startStreamingMp4Conversion(currentFileName)
-				} else {
-					currentFileName = getFileName(tempPath) + ".hevc"
-					FmtPrint("开始录制HEVC格式：" + currentFileName)
-					currentFile, err = os.OpenFile(currentFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-				}
+				currentFileName = getFileName(tempPath) + ".hevc"
+				FmtPrint("开始录制HEVC格式：" + currentFileName)
+				currentFile, err = os.OpenFile(currentFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 				
 				if err != nil {
 					FmtPrint("创建文件失败: ", err)
@@ -173,16 +166,9 @@ func linkServerAndRecord(video *Video, tempPath string) bool {
 				FmtPrint("文件大小达到限制，完成录制：" + currentFileName)
 				
 				//创建新文件
-				if video.ConvertToMp4 {
-					currentFileName = getFileName(tempPath) + ".mp4"
-					FmtPrint("开始录制新流式MP4文件：" + currentFileName)
-					// 使用流式转换，支持边下载边播放
-					currentFile, err = startStreamingMp4Conversion(currentFileName)
-				} else {
-					currentFileName = getFileName(tempPath) + ".hevc"
-					FmtPrint("开始录制新HEVC文件：" + currentFileName)
-					currentFile, err = os.OpenFile(currentFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-				}
+				currentFileName = getFileName(tempPath) + ".hevc"
+				FmtPrint("开始录制新HEVC文件：" + currentFileName)
+				currentFile, err = os.OpenFile(currentFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 				
 				if err != nil {
 					FmtPrint("创建新文件失败: ", err)
@@ -318,116 +304,4 @@ func DeleteOldFiles(config *Config, video *Video) {
 	}
 }
 
-// 启动实时MP4转换
-func startRealTimeMp4Conversion(outputFilePath string) (io.WriteCloser, error) {
-	// 检查FFmpeg是否可用
-	_, err := exec.LookPath("ffmpeg")
-	if err != nil {
-		FmtPrint("FFmpeg未找到，无法进行实时MP4转换: ", err)
-		return nil, err
-	}
-	
-	// 构建FFmpeg命令进行实时转换
-	// 使用分段录制的方式，确保MP4文件可以边下载边播放
-	// -f hevc: 输入格式为HEVC
-	// -i pipe:0: 从标准输入读取
-	// -c copy: 复制流，不重新编码
-	// -f mp4: 输出格式为MP4
-	// -movflags +frag_keyframe+empty_moov: 启用分段写入，允许流式播放
-	// -y: 覆盖输出文件
-	cmd := exec.Command("ffmpeg", "-f", "hevc", "-i", "pipe:0", "-c", "copy", "-f", "mp4", "-movflags", "+frag_keyframe+empty_moov", "-y", outputFilePath)
-	
-	// 获取标准输入管道
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		FmtPrint("创建FFmpeg管道失败: ", err)
-		return nil, err
-	}
-	
-	// 启动FFmpeg进程
-	err = cmd.Start()
-	if err != nil {
-		FmtPrint("启动FFmpeg失败: ", err)
-		return nil, err
-	}
-	
-	// 创建一个包装文件，将写入操作转发到FFmpeg的stdin
-	mp4File := &Mp4ConversionFile{
-		stdin: stdin,
-		cmd:   cmd,
-	}
-	
-	return mp4File, nil
-}
 
-// MP4转换文件包装器
-type Mp4ConversionFile struct {
-	stdin io.WriteCloser
-	cmd   *exec.Cmd
-}
-
-// Write 实现io.Writer接口
-func (m *Mp4ConversionFile) Write(p []byte) (n int, err error) {
-	return m.stdin.Write(p)
-}
-
-// Close 关闭文件
-func (m *Mp4ConversionFile) Close() error {
-	m.stdin.Close()
-	return m.cmd.Wait()
-}
-
-// Sync 同步数据
-func (m *Mp4ConversionFile) Sync() error {
-	// 对于io.WriteCloser，我们无法直接调用Sync，所以这里不做任何操作
-	return nil
-}
-
-// 启动流式MP4转换（更可靠的方法）
-func startStreamingMp4Conversion(outputFilePath string) (io.WriteCloser, error) {
-	// 检查FFmpeg是否可用
-	_, err := exec.LookPath("ffmpeg")
-	if err != nil {
-		FmtPrint("FFmpeg未找到，无法进行流式MP4转换: ", err)
-		return nil, err
-	}
-	
-	// 使用更可靠的流式MP4录制方法
-	// -f hevc: 输入格式为HEVC
-	// -i pipe:0: 从标准输入读取
-	// -c copy: 复制流，不重新编码
-	// -f mp4: 输出格式为MP4
-	// -movflags +frag_keyframe+empty_moov+default_base_moof: 启用完整的流式写入
-	// -frag_duration 1000000: 设置分段持续时间为1秒
-	// -y: 覆盖输出文件
-	cmd := exec.Command("ffmpeg", 
-		"-f", "hevc", 
-		"-i", "pipe:0", 
-		"-c", "copy", 
-		"-f", "mp4", 
-		"-movflags", "+frag_keyframe+empty_moov+default_base_moof", 
-		"-frag_duration", "1000000",
-		"-y", outputFilePath)
-	
-	// 获取标准输入管道
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		FmtPrint("创建FFmpeg管道失败: ", err)
-		return nil, err
-	}
-	
-	// 启动FFmpeg进程
-	err = cmd.Start()
-	if err != nil {
-		FmtPrint("启动FFmpeg失败: ", err)
-		return nil, err
-	}
-	
-	// 创建一个包装文件，将写入操作转发到FFmpeg的stdin
-	mp4File := &Mp4ConversionFile{
-		stdin: stdin,
-		cmd:   cmd,
-	}
-	
-	return mp4File, nil
-}
