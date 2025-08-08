@@ -2,6 +2,7 @@
 
 import (
 	"crypto/tls"
+	"io"
 	"io/fs"
 	"net/url"
 	"os"
@@ -9,7 +10,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -122,7 +122,7 @@ func linkServerAndRecord(video *Video, tempPath string) bool {
 	}
 	
 	//初始化文件相关变量
-	var currentFile *os.File
+	var currentFile io.WriteCloser
 	var currentFileName string
 	var currentFileSize int64
 	maxFileSize := int64(video.Size * 1024 * 1024) // 转换为字节
@@ -202,7 +202,8 @@ func linkServerAndRecord(video *Video, tempPath string) bool {
 			currentFileSize += int64(bytesWritten)
 			
 			//强制刷新缓冲区，确保数据及时写入磁盘
-			currentFile.Sync()
+			// 对于io.WriteCloser，我们无法直接调用Sync，所以这里不做任何操作
+			// 如果需要同步，可以考虑使用带缓冲的写入器
 		}
 	}
 }
@@ -318,7 +319,7 @@ func DeleteOldFiles(config *Config, video *Video) {
 }
 
 // 启动实时MP4转换
-func startRealTimeMp4Conversion(outputFilePath string) (*os.File, error) {
+func startRealTimeMp4Conversion(outputFilePath string) (io.WriteCloser, error) {
 	// 检查FFmpeg是否可用
 	_, err := exec.LookPath("ffmpeg")
 	if err != nil {
@@ -359,7 +360,7 @@ func startRealTimeMp4Conversion(outputFilePath string) (*os.File, error) {
 
 // MP4转换文件包装器
 type Mp4ConversionFile struct {
-	stdin *os.File
+	stdin io.WriteCloser
 	cmd   *exec.Cmd
 }
 
@@ -376,5 +377,6 @@ func (m *Mp4ConversionFile) Close() error {
 
 // Sync 同步数据
 func (m *Mp4ConversionFile) Sync() error {
-	return m.stdin.Sync()
+	// 对于io.WriteCloser，我们无法直接调用Sync，所以这里不做任何操作
+	return nil
 }
