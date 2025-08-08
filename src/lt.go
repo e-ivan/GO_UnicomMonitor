@@ -47,8 +47,10 @@ func readMessageWithRetry(conn *websocket.Conn, maxRetries int, retryDelay time.
 		
 		// 如果不是最后一次尝试，则等待后重试
 		if attempt < maxRetries {
-			FmtPrint("读取消息失败，尝试重连... (第", attempt+1, "次重试，共", maxRetries+1, "次)")
-			time.Sleep(retryDelay *	attempt)
+			// 根据重试次数计算延迟时间，使用指数退避策略
+			currentDelay := retryDelay * time.Duration(1<<attempt) // 2^attempt 倍延迟
+			FmtPrint("读取消息失败，尝试重连... (第", attempt+1, "次重试，共", maxRetries+1, "次，延迟", currentDelay, "秒)")
+			time.Sleep(currentDelay)
 		}
 	}
 	
