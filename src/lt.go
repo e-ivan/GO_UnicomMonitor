@@ -66,17 +66,6 @@ func linkServerAndRecord(video *Video, tempPath string) bool {
 	var currentFileSize int64
 	maxFileSize := int64(video.Size * 1024 * 1024) // 转换为字节
 	
-	//创建第一个文件
-	currentFileName = getFileName(tempPath) + ".mp4"
-	FmtPrint("开始录制：" + currentFileName)
-	
-	currentFile, err = os.OpenFile(currentFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		FmtPrint("创建文件失败: ", err)
-		return false
-	}
-	defer currentFile.Close()
-	
 	//持续接收视频流并写入文件
 	for {
 		_, response, err := conn.ReadMessage()
@@ -87,8 +76,19 @@ func linkServerAndRecord(video *Video, tempPath string) bool {
 		
 		//检查数据有效性
 		if len(response) > 1 {
-			//检查当前文件大小是否超过限制
-			if currentFileSize >= maxFileSize {
+			//检查是否需要创建新文件
+			if currentFile == nil {
+				//创建第一个文件
+				currentFileName = getFileName(tempPath) + ".hevc"
+				FmtPrint("开始录制：" + currentFileName)
+				
+				currentFile, err = os.OpenFile(currentFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+				if err != nil {
+					FmtPrint("创建文件失败: ", err)
+					return false
+				}
+				currentFileSize = 0
+			} else if currentFileSize >= maxFileSize {
 				//关闭当前文件
 				currentFile.Close()
 				FmtPrint("文件大小达到限制，完成录制：" + currentFileName)
