@@ -103,15 +103,10 @@ func linkServerAndRecord(video *Video, tempPath string) bool {
 		if err != nil {
 			FmtPrint("接收消息失败：", err)
 			
-			// 连接断开时，如果有正在录制的文件，进行清理和转换
+			// 连接断开时，如果有正在录制的文件，进行清理
 			if currentFile != nil {
 				currentFile.Close()
 				FmtPrint("连接断开，完成当前文件录制：" + currentFileName)
-				
-				// 如果配置了转换为MP4且文件有内容，则进行转换
-				if video.ConvertToMp4 && currentFileSize > 0 {
-					go convertHevcToMp4(currentFileName, video)
-				}
 			}
 			
 			return false
@@ -122,10 +117,17 @@ func linkServerAndRecord(video *Video, tempPath string) bool {
 			//检查是否需要创建新文件
 			if currentFile == nil {
 				//创建第一个文件
-				currentFileName = getFileName(tempPath) + ".hevc"
-				FmtPrint("开始录制：" + currentFileName)
+				if video.ConvertToMp4 {
+					currentFileName = getFileName(tempPath) + ".mp4"
+					FmtPrint("开始录制MP4格式：" + currentFileName)
+					// 使用实时转换
+					currentFile, err = startRealTimeMp4Conversion(currentFileName)
+				} else {
+					currentFileName = getFileName(tempPath) + ".hevc"
+					FmtPrint("开始录制HEVC格式：" + currentFileName)
+					currentFile, err = os.OpenFile(currentFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+				}
 				
-				currentFile, err = os.OpenFile(currentFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 				if err != nil {
 					FmtPrint("创建文件失败: ", err)
 					return false
@@ -136,16 +138,18 @@ func linkServerAndRecord(video *Video, tempPath string) bool {
 				currentFile.Close()
 				FmtPrint("文件大小达到限制，完成录制：" + currentFileName)
 				
-				// 如果配置了转换为MP4，则进行转换
+				//创建新文件
 				if video.ConvertToMp4 {
-					go convertHevcToMp4(currentFileName, video)
+					currentFileName = getFileName(tempPath) + ".mp4"
+					FmtPrint("开始录制新MP4文件：" + currentFileName)
+					// 使用实时转换
+					currentFile, err = startRealTimeMp4Conversion(currentFileName)
+				} else {
+					currentFileName = getFileName(tempPath) + ".hevc"
+					FmtPrint("开始录制新HEVC文件：" + currentFileName)
+					currentFile, err = os.OpenFile(currentFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 				}
 				
-				//创建新文件
-				currentFileName = getFileName(tempPath) + ".hevc"
-				FmtPrint("开始录制新文件：" + currentFileName)
-				
-				currentFile, err = os.OpenFile(currentFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 				if err != nil {
 					FmtPrint("创建新文件失败: ", err)
 					return false
@@ -279,41 +283,64 @@ func DeleteOldFiles(config *Config, video *Video) {
 	}
 }
 
-// 将HEVC文件转换为MP4格式
-func convertHevcToMp4(hevcFilePath string, video *Video) {
-	// 生成MP4文件路径
-	mp4FilePath := strings.TrimSuffix(hevcFilePath, ".hevc") + ".mp4"
-	
+// 启动实时MP4转换
+func startRealTimeMp4Conversion(outputFilePath string) (*os.File, error) {
 	// 检查FFmpeg是否可用
 	_, err := exec.LookPath("ffmpeg")
 	if err != nil {
-		FmtPrint("FFmpeg未找到，无法转换视频格式。请安装FFmpeg: ", err)
-		return
+		FmtPrint("FFmpeg未找到，无法进行实时MP4转换: ", err)
+		return nil, err
 	}
 	
-	FmtPrint("开始转换文件: " + hevcFilePath + " -> " + mp4FilePath)
-	
-	// 构建FFmpeg命令
-	// -i: 输入文件
-	// -c copy: 复制流，不重新编码（速度快）
+	// 构建FFmpeg命令进行实时转换
+	// -f hevc: 输入格式为HEVC
+	// -i pipe:0: 从标准输入读取
+	// -c copy: 复制流，不重新编码
 	// -f mp4: 输出格式为MP4
 	// -y: 覆盖输出文件
-	cmd := exec.Command("ffmpeg", "-i", hevcFilePath, "-c", "copy", "-f", "mp4", "-y", mp4FilePath)
+	cmd := exec.Command("ffmpeg", "-f", "hevc", "-i", "pipe:0", "-c", "copy", "-f", "mp4", "-y", outputFilePath)
 	
-	// 执行转换
-	err = cmd.Run()
+	// 获取标准输入管道
+	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		FmtPrint("转换失败: ", err)
-		return
+		FmtPrint("创建FFmpeg管道失败: ", err)
+		return nil, err
 	}
 	
-	FmtPrint("转换完成: " + mp4FilePath)
-	
-	// 转换成功后删除原HEVC文件（可选）
-	err = os.Remove(hevcFilePath)
+	// 启动FFmpeg进程
+	err = cmd.Start()
 	if err != nil {
-		FmtPrint("删除原文件失败: ", err)
-	} else {
-		FmtPrint("已删除原HEVC文件: " + hevcFilePath)
+		FmtPrint("启动FFmpeg失败: ", err)
+		return nil, err
 	}
+	
+	// 创建一个包装文件，将写入操作转发到FFmpeg的stdin
+	mp4File := &Mp4ConversionFile{
+		stdin: stdin,
+		cmd:   cmd,
+	}
+	
+	return mp4File, nil
+}
+
+// MP4转换文件包装器
+type Mp4ConversionFile struct {
+	stdin *os.File
+	cmd   *exec.Cmd
+}
+
+// Write 实现io.Writer接口
+func (m *Mp4ConversionFile) Write(p []byte) (n int, err error) {
+	return m.stdin.Write(p)
+}
+
+// Close 关闭文件
+func (m *Mp4ConversionFile) Close() error {
+	m.stdin.Close()
+	return m.cmd.Wait()
+}
+
+// Sync 同步数据
+func (m *Mp4ConversionFile) Sync() error {
+	return m.stdin.Sync()
 }
