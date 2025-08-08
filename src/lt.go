@@ -34,7 +34,7 @@ func GoRecording(config *Config, video *Video) {
 }
 
 // 带重试机制的消息读取方法
-func readMessageWithRetry(conn *websocket.Conn, maxRetries int, retryDelay time.Duration) ([]byte, error) {
+func readMessageWithRetry(conn *websocket.Conn, maxRetries int, retryDelay time.Duration, video *Video) ([]byte, error) {
 	var lastErr error
 	
 	for attempt := 0; attempt <= maxRetries; attempt++ {
@@ -45,12 +45,46 @@ func readMessageWithRetry(conn *websocket.Conn, maxRetries int, retryDelay time.
 		
 		lastErr = err
 		
-		// 如果不是最后一次尝试，则等待后重试
+		// 如果不是最后一次尝试，则重新连接服务器
 		if attempt < maxRetries {
 			// 根据重试次数计算延迟时间，使用指数退避策略
 			currentDelay := retryDelay * time.Duration(1<<attempt) // 2^attempt 倍延迟
-			FmtPrint("读取消息失败，尝试重连... (第", attempt+1, "次重试，共", maxRetries+1, "次，延迟", currentDelay, "秒)")
+			FmtPrint("读取消息失败，尝试重新连接服务器... (第", attempt+1, "次重试，共", maxRetries+1, "次，延迟", currentDelay, "秒)")
 			time.Sleep(currentDelay)
+			
+			// 关闭当前连接
+			conn.Close()
+			
+			// 重新连接服务器
+			uri := url.URL{
+				Scheme: "wss",
+				Host:   video.WsHost,
+				Path:   "/h5player/live",
+			}
+			//跳过证书验证
+			dialer := websocket.Dialer{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			}
+			//发起连接
+			newConn, _, err := dialer.Dial(uri.String(), nil)
+			if err != nil {
+				FmtPrint("重新连接服务器失败", err)
+				continue
+			}
+			
+			//发送消息
+			message := "_paramStr_=" + video.ParamMsg
+			err = newConn.WriteMessage(websocket.TextMessage, []byte(message))
+			if err != nil {
+				FmtPrint("重新发送消息失败：", err)
+				newConn.Close()
+				continue
+			}
+			
+			// 更新连接
+			*conn = *newConn
 		}
 	}
 	
@@ -99,7 +133,7 @@ func linkServerAndRecord(video *Video, tempPath string) bool {
 		
 	//持续接收视频流并写入文件
 	for {
-		response, err := readMessageWithRetry(conn, maxRetries, retryDelay)
+		response, err := readMessageWithRetry(conn, maxRetries, retryDelay, video)
 		if err != nil {
 			FmtPrint("接收消息失败：", err)
 			
