@@ -4,7 +4,6 @@
   "path": "./videos/",
   "sleep": 60,
   "onvifPort": 8080,
-  "onvifAuth": true,
   "video": [
     {
       "wsHost": "vd-file-hnzz2-wcloud.wojiazongguan.cn:50443",
@@ -12,7 +11,15 @@
       "name": "客厅",
       "size": 10,
       "count": 10,
-      "streamOnly": false
+      "streamOnly": true
+    },
+    {
+      "wsHost": "vd-file-hnzz2-wcloud.wojiazongguan.cn:50443",
+      "paramMsg": "MT1234567891==",
+      "name": "卧室",
+      "size": 10,
+      "count": 10,
+      "streamOnly": true
     }
   ]
 }

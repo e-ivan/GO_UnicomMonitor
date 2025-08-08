@@ -10,11 +10,13 @@ import (
 
 // 配置文件
 type Config struct {
-	Host  string  `json:"host"`  // 监听地址
-	User  string  `json:"user"`  // 用户信息
-	Path  string  `json:"path"`  // 保存路径
-	Sleep int     `json:"sleep"` // 重连间隔
-	Video []Video `json:"video"` // 视频录制配置
+	Host         string  `json:"host"`         // 监听地址
+	User         string  `json:"user"`         // 用户信息
+	Path         string  `json:"path"`         // 保存路径
+	Sleep        int     `json:"sleep"`        // 重连间隔
+	OnvifPort    int     `json:"onvifPort"`    // ONVIF服务端口
+	OnvifAuth    bool    `json:"onvifAuth"`    // ONVIF认证开关
+	Video        []Video `json:"video"`        // 视频录制配置
 }
 
 // 视频录制配置
@@ -24,6 +26,7 @@ type Video struct {
 	Name        string `json:"name"`        // 设备名称
 	Size        int    `json:"size"`        // 截断大小
 	Count       int    `json:"count"`       // 保留天数
+	StreamOnly  bool   `json:"streamOnly"`  // 仅流模式，不保存文件
 }
 
 //go:embed config.json

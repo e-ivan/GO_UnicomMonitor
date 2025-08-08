@@ -4,7 +4,7 @@
   "path": "./videos/",
   "sleep": 60,
   "onvifPort": 8080,
-  "onvifAuth": true,
+  "onvifAuth": false,
   "video": [
     {
       "wsHost": "vd-file-hnzz2-wcloud.wojiazongguan.cn:50443",

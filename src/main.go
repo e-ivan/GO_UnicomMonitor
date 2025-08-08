@@ -15,10 +15,20 @@ func main() {
 	if config.Path == "" {
 		config.Path = "./"
 	}
+	
+	// 初始化ONVIF服务
+	if config.OnvifPort > 0 {
+		InitOnvifService(&config)
+	}
+	
 	//启动录制协程
 	FmtPrint("启动录制服务，存储路径：" + config.Path)
 	for _, video := range config.Video {
-		FmtPrint("设备 " + video.Name + " 录制HEVC格式视频")
+		if video.StreamOnly {
+			FmtPrint("设备 " + video.Name + " 仅流模式，不保存文件")
+		} else {
+			FmtPrint("设备 " + video.Name + " 录制HEVC格式视频")
+		}
 		go GoRecording(&config, &video)
 	}
 	//删除旧文件协程

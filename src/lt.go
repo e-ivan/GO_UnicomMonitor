@@ -22,7 +22,7 @@ func GoRecording(config *Config, video *Video) {
 	//断开后重连
 	for {
 		//连接服务器传输数据
-		success := linkServerAndRecord(video, tempPath)
+		success := linkServerAndRecord(video, tempPath, config)
 		//检查连接状态
 		if !success {
 			FmtPrint(video.Name + "设备连接失败，稍后自动重连(" + strconv.Itoa(config.Sleep) + ")")
@@ -93,7 +93,7 @@ func readMessageWithRetry(conn *websocket.Conn, maxRetries int, retryDelay time.
 
 
 // 连接服务器并持续录制
-func linkServerAndRecord(video *Video, tempPath string) bool {
+func linkServerAndRecord(video *Video, tempPath string, config *Config) bool {
 	uri := url.URL{
 		Scheme: "wss",
 		Host:   video.WsHost,
@@ -148,48 +148,56 @@ func linkServerAndRecord(video *Video, tempPath string) bool {
 		
 		//检查数据有效性
 		if len(response) > 1 {
-			//检查是否需要创建新文件
-			if currentFile == nil {
-				//创建第一个文件
-				currentFileName = getFileName(tempPath) + ".hevc"
-				FmtPrint("开始录制HEVC格式：" + currentFileName)
-				currentFile, err = os.OpenFile(currentFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-				
-				if err != nil {
-					FmtPrint("创建文件失败: ", err)
-					return false
-				}
-				currentFileSize = 0
-			} else if currentFileSize >= maxFileSize {
-				//关闭当前文件
-				currentFile.Close()
-				FmtPrint("文件大小达到限制，完成录制：" + currentFileName)
-				
-				//创建新文件
-				currentFileName = getFileName(tempPath) + ".hevc"
-				FmtPrint("开始录制新HEVC文件：" + currentFileName)
-				currentFile, err = os.OpenFile(currentFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-				
-				if err != nil {
-					FmtPrint("创建新文件失败: ", err)
-					return false
-				}
-				currentFileSize = 0
+			// 如果启用了ONVIF服务，更新视频流
+			if config.OnvifPort > 0 {
+				UpdateVideoStream(video.Name, response)
 			}
 			
-			//写入数据到当前文件
-			bytesWritten, writeErr := currentFile.Write(response)
-			if writeErr != nil {
-				FmtPrint("写入文件失败：", writeErr)
-				return false
+			// 如果不是仅流模式，则保存文件
+			if !video.StreamOnly {
+				//检查是否需要创建新文件
+				if currentFile == nil {
+					//创建第一个文件
+					currentFileName = getFileName(tempPath) + ".hevc"
+					FmtPrint("开始录制HEVC格式：" + currentFileName)
+					currentFile, err = os.OpenFile(currentFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+					
+					if err != nil {
+						FmtPrint("创建文件失败: ", err)
+						return false
+					}
+					currentFileSize = 0
+				} else if currentFileSize >= maxFileSize {
+					//关闭当前文件
+					currentFile.Close()
+					FmtPrint("文件大小达到限制，完成录制：" + currentFileName)
+					
+					//创建新文件
+					currentFileName = getFileName(tempPath) + ".hevc"
+					FmtPrint("开始录制新HEVC文件：" + currentFileName)
+					currentFile, err = os.OpenFile(currentFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+					
+					if err != nil {
+						FmtPrint("创建新文件失败: ", err)
+						return false
+					}
+					currentFileSize = 0
+				}
+				
+				//写入数据到当前文件
+				bytesWritten, writeErr := currentFile.Write(response)
+				if writeErr != nil {
+					FmtPrint("写入文件失败：", writeErr)
+					return false
+				}
+				
+				//更新文件大小
+				currentFileSize += int64(bytesWritten)
+				
+				//强制刷新缓冲区，确保数据及时写入磁盘
+				// 对于io.WriteCloser，我们无法直接调用Sync，所以这里不做任何操作
+				// 如果需要同步，可以考虑使用带缓冲的写入器
 			}
-			
-			//更新文件大小
-			currentFileSize += int64(bytesWritten)
-			
-			//强制刷新缓冲区，确保数据及时写入磁盘
-			// 对于io.WriteCloser，我们无法直接调用Sync，所以这里不做任何操作
-			// 如果需要同步，可以考虑使用带缓冲的写入器
 		}
 	}
 }
