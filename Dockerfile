@@ -26,6 +26,18 @@ ENV TZ=Asia/Shanghai
 LABEL name=unicomMonitor
 LABEL url=https://github.com/zgcwkjOpenProject/GO_UnicomMonitor
 
+# 更新镜像源并安装FFmpeg
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
+    apk update && \
+    apk add --no-cache \
+    ffmpeg \
+    tzdata \
+    ca-certificates && \
+    rm -rf /var/cache/apk/*
+
+# 验证FFmpeg安装
+RUN ffmpeg -version
+
 # 设置工作目录
 WORKDIR /root/
 
