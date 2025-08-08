@@ -33,6 +33,29 @@ func GoRecording(config *Config, video *Video) {
 	}
 }
 
+// 带重试机制的消息读取方法
+func readMessageWithRetry(conn *websocket.Conn, maxRetries int, retryDelay time.Duration) ([]byte, error) {
+	var lastErr error
+	
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		_, response, err := conn.ReadMessage()
+		if err == nil {
+			return response, nil
+		}
+		
+		lastErr = err
+		
+		// 如果不是最后一次尝试，则等待后重试
+		if attempt < maxRetries {
+			FmtPrint("读取消息失败，尝试重连... (第", attempt+1, "次重试，共", maxRetries+1, "次)")
+			time.Sleep(retryDelay *	attempt)
+		}
+	}
+	
+	return nil, lastErr
+}
+
+
 // 连接服务器并持续录制
 func linkServerAndRecord(video *Video, tempPath string) bool {
 	uri := url.URL{
@@ -67,10 +90,14 @@ func linkServerAndRecord(video *Video, tempPath string) bool {
 	var currentFileName string
 	var currentFileSize int64
 	maxFileSize := int64(video.Size * 1024 * 1024) // 转换为字节
-	
+
+	// 重试配置
+	maxRetries := 5
+	retryDelay := 2 * time.Second
+		
 	//持续接收视频流并写入文件
 	for {
-		_, response, err := conn.ReadMessage()
+		response, err := readMessageWithRetry(conn, maxRetries, retryDelay)
 		if err != nil {
 			FmtPrint("接收消息失败：", err)
 			
