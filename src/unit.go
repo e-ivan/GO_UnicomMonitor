@@ -19,11 +19,12 @@ type Config struct {
 
 // 视频录制配置
 type Video struct {
-	WsHost   string `json:"wsHost"`   // 连接地址
-	ParamMsg string `json:"paramMsg"` // 连接参数
-	Name     string `json:"name"`     // 设备名称
-	Size     int    `json:"size"`     // 截断大小
-	Count    int    `json:"count"`    // 保留天数
+	WsHost      string `json:"wsHost"`      // 连接地址
+	ParamMsg    string `json:"paramMsg"`    // 连接参数
+	Name        string `json:"name"`        // 设备名称
+	Size        int    `json:"size"`        // 截断大小
+	Count       int    `json:"count"`       // 保留天数
+	ConvertToMp4 bool  `json:"convertToMp4"` // 是否转换为MP4格式
 }
 
 //go:embed config.json

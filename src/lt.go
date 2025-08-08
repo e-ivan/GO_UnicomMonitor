@@ -5,9 +5,11 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -71,6 +73,18 @@ func linkServerAndRecord(video *Video, tempPath string) bool {
 		_, response, err := conn.ReadMessage()
 		if err != nil {
 			FmtPrint("接收消息失败：", err)
+			
+			// 连接断开时，如果有正在录制的文件，进行清理和转换
+			if currentFile != nil {
+				currentFile.Close()
+				FmtPrint("连接断开，完成当前文件录制：" + currentFileName)
+				
+				// 如果配置了转换为MP4且文件有内容，则进行转换
+				if video.ConvertToMp4 && currentFileSize > 0 {
+					go convertHevcToMp4(currentFileName, video)
+				}
+			}
+			
 			return false
 		}
 		
@@ -92,6 +106,11 @@ func linkServerAndRecord(video *Video, tempPath string) bool {
 				//关闭当前文件
 				currentFile.Close()
 				FmtPrint("文件大小达到限制，完成录制：" + currentFileName)
+				
+				// 如果配置了转换为MP4，则进行转换
+				if video.ConvertToMp4 {
+					go convertHevcToMp4(currentFileName, video)
+				}
 				
 				//创建新文件
 				currentFileName = getFileName(tempPath) + ".hevc"
@@ -228,5 +247,44 @@ func DeleteOldFiles(config *Config, video *Video) {
 	for i := foldersToKeep; i < len(folders); i++ {
 		oldFolder := filepath.Join(dirPath, folders[i].Name())
 		_ = os.RemoveAll(oldFolder)
+	}
+}
+
+// 将HEVC文件转换为MP4格式
+func convertHevcToMp4(hevcFilePath string, video *Video) {
+	// 生成MP4文件路径
+	mp4FilePath := strings.TrimSuffix(hevcFilePath, ".hevc") + ".mp4"
+	
+	// 检查FFmpeg是否可用
+	_, err := exec.LookPath("ffmpeg")
+	if err != nil {
+		FmtPrint("FFmpeg未找到，无法转换视频格式。请安装FFmpeg: ", err)
+		return
+	}
+	
+	FmtPrint("开始转换文件: " + hevcFilePath + " -> " + mp4FilePath)
+	
+	// 构建FFmpeg命令
+	// -i: 输入文件
+	// -c copy: 复制流，不重新编码（速度快）
+	// -f mp4: 输出格式为MP4
+	// -y: 覆盖输出文件
+	cmd := exec.Command("ffmpeg", "-i", hevcFilePath, "-c", "copy", "-f", "mp4", "-y", mp4FilePath)
+	
+	// 执行转换
+	err = cmd.Run()
+	if err != nil {
+		FmtPrint("转换失败: ", err)
+		return
+	}
+	
+	FmtPrint("转换完成: " + mp4FilePath)
+	
+	// 转换成功后删除原HEVC文件（可选）
+	err = os.Remove(hevcFilePath)
+	if err != nil {
+		FmtPrint("删除原文件失败: ", err)
+	} else {
+		FmtPrint("已删除原HEVC文件: " + hevcFilePath)
 	}
 }
